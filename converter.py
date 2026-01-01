@@ -4,7 +4,8 @@ import glob
 from pathlib import Path
 
 # --- YAPILANDIRMA ---
-OUTPUT_SUBFOLDER_NAME = "16khz_mono_WAV_Cikti"
+# Çıktı dosyalarının kaydedileceği ana klasör (kaynak klasörden bağımsız)
+OUTPUT_BASE_DIR = "/home/wololoo/Havelsan_Suit/wavs"
 TARGET_RATE = 16000 # 16 kHz
 TARGET_CHANNELS = 1 # Mono
 
@@ -39,7 +40,9 @@ def mp3_to_16khz_mono_wav(input_mp3_path, output_wav_path):
 
 def batch_convert_mp3s(source_directory):
     """
-    Belirtilen klasördeki tüm MP3 dosyalarını dönüştürür ve alt klasöre kaydeder.
+    Belirtilen klasördeki tüm MP3 dosyalarını dönüştürür.
+    Tüm WAV dosyaları kaynak klasörün adıyla oluşturulan tek bir klasöre kaydedilir.
+    Örnek: outputs/komut_adi/*.mp3 -> wavs/komut_adi/*.wav
     """
     source_path = Path(source_directory)
     
@@ -47,10 +50,15 @@ def batch_convert_mp3s(source_directory):
         print(f"❌ Hata: Belirtilen yol bir klasör değil veya bulunamadı: {source_directory}")
         return
 
-    # Çıktı klasörünü oluştur
-    output_path = source_path / OUTPUT_SUBFOLDER_NAME
-    output_path.mkdir(exist_ok=True)
-    print(f"📂 Çıktılar bu klasöre kaydedilecek: {output_path}")
+    # Kaynak klasörün adını al (örn: "traklara_angajman_yap")
+    command_name = source_path.name
+    
+    # Çıktı klasörünü oluştur: wavs/komut_adi/
+    output_dir = Path(OUTPUT_BASE_DIR) / command_name
+    output_dir.mkdir(parents=True, exist_ok=True)
+    
+    print(f"📂 Kaynak klasör: {source_path}")
+    print(f"📂 Çıktı klasörü: {output_dir}")
 
     # Klasördeki tüm MP3 dosyalarını bul
     mp3_files = list(source_path.glob("*.mp3"))
@@ -65,7 +73,9 @@ def batch_convert_mp3s(source_directory):
     
     for input_file_path in mp3_files:
         file_name_stem = input_file_path.stem
-        output_file_path = output_path / f"{file_name_stem}.wav"
+        
+        # WAV dosyasını doğrudan komut klasörüne kaydet
+        output_file_path = output_dir / f"{file_name_stem}.wav"
         
         print(f"\n🔄 Dönüştürülüyor: {input_file_path.name}")
 
@@ -74,7 +84,7 @@ def batch_convert_mp3s(source_directory):
             # Eğer FFmpeg hatası almışsak (False dönmüşse), döngüden çık
             if not os.path.exists(output_file_path): 
                 break
-            print(f"   ✅ Başarılı -> {output_file_path.name}")
+            print(f"   ✅ Başarılı -> {command_name}/{output_file_path.name}")
             success_count += 1
         else:
             print(f"   ❌ Başarısız. Bu dosya atlanıyor.")
@@ -86,10 +96,34 @@ def batch_convert_mp3s(source_directory):
     print(f"\n--- İŞLEM BİTTİ ---")
     print(f"Toplam dosya: {len(mp3_files)}")
     print(f"Başarılı dönüştürülen: {success_count}")
-    print(f"Kaydedilen klasör: {output_path}")
+    print(f"Kaydedilen klasör: {output_dir}")
 
 
-# --- KULLANIM: DOSYA YOLUNUZ BURADA ---
-source_dir = "/home/didim_mehmet/Desktop/veri_seti/hedefi_track_ediyorum"
+# --- KULLANIM: KAYNAK KLASÖR YOLUNUZ BURADA ---
+# MP3 dosyalarının bulunduğu ana klasör (alt klasörler otomatik işlenir)
+source_dir = "/home/wololoo/Havelsan_Suit/outputs"
 
-batch_convert_mp3s(source_dir)
+# NOT: Çıktılar OUTPUT_BASE_DIR değişkeninde belirtilen konuma kaydedilir (satır 8)
+# Varsayılan: /home/wololoo/Havelsan_Suit/wavs/
+# Yapı: wavs/komut_adi/*.wav (her komutun tüm varyantları tek klasörde)
+
+if __name__ == "__main__":
+    source_path = Path(source_dir)
+    
+    # Eğer outputs klasörüyse, tüm alt klasörleri işle
+    if source_path.name == "outputs" or "outputs" in str(source_path):
+        print(f"🔍 '{source_path}' içindeki tüm alt klasörler taranacak...")
+        subdirs = [d for d in source_path.iterdir() if d.is_dir()]
+        
+        if not subdirs:
+            print("⚠️ Alt klasör bulunamadı.")
+        else:
+            print(f"📁 Toplam {len(subdirs)} alt klasör bulundu.\n")
+            for subdir in subdirs:
+                print(f"\n{'='*80}")
+                print(f"📂 İşleniyor: {subdir.name}")
+                print(f"{'='*80}")
+                batch_convert_mp3s(str(subdir))
+    else:
+        # Tek klasör işle
+        batch_convert_mp3s(source_dir)

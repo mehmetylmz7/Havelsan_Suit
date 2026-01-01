@@ -1,5 +1,10 @@
 import os
-from elevenlabs.client import ElevenLabs 
+import json
+from elevenlabs.client import ElevenLabs
+from dotenv import load_dotenv
+
+# .env dosyasını yükle
+load_dotenv()
 
 # API anahtarı ortam değişkeninden okunur (güvenli kullanım)
 YOUR_API_KEY = os.getenv("ELEVENLABS_API_KEY")
@@ -14,7 +19,23 @@ except Exception as e:
     print(f"Hata: ElevenLabs istemcisi başlatılamadı. Detay: {e}")
     exit()
 
-# 2. Proje Ayarları
+# 2. Komutları commands.json dosyasından oku
+try:
+    with open("commands.json", "r", encoding="utf-8") as f:
+        data = json.load(f)
+        commands = data.get("commands", [])
+    if not commands:
+        print("Hata: commands.json dosyasında komut bulunamadı.")
+        exit()
+    print(f"✅ {len(commands)} komut başarıyla yüklendi.")
+except FileNotFoundError:
+    print("Hata: commands.json dosyası bulunamadı.")
+    exit()
+except json.JSONDecodeError as e:
+    print(f"Hata: commands.json dosyası geçersiz JSON formatında. Detay: {e}")
+    exit()
+
+# 3. Proje Ayarları
 voices = [
     "pa0LgEk5MjYFGCuG6I3V",  
     "Q5n6GDIjpN0pLOlycRFT",  
@@ -33,56 +54,62 @@ models = ["eleven_multilingual_v2", "eleven_turbo_v2_5", "eleven_flash_v2_5"]
 output_dir = "outputs"
 os.makedirs(output_dir, exist_ok=True)
 
-# GÜNCEL METİN
-TEXT_TO_CONVERT = "hedefi track ediyorum"
+print("=" * 80)
+print(f"📋 Toplam {len(commands)} komut için ses üretilecek.")
+print(f"🎙️  Her komut için {len(voices) * len(models)} farklı ses kombinasyonu oluşturulacak.")
+print("=" * 80)
 
-# Dosya adının temelini oluştur (boşlukları _ ile değiştir)
-BASE_FILENAME = TEXT_TO_CONVERT.lower().replace(" ", "_")
-
-print("=" * 60)
-print(f"Metin: '{TEXT_TO_CONVERT}' Sese çevriliyor.")
-print(f"Denenecek Kombinasyon Sayısı: {len(voices) * len(models)}")
-print("Dosyalar şöyle adlandırılacak: {BASE_FILENAME}_01.mp3, {BASE_FILENAME}_02.mp3, ...")
-print("=" * 60)
-
-# 3. Ses Üretme Döngüsü
-counter = 1 # Ardışık numaralandırma sayacı
-total_combinations = len(voices) * len(models)
-
-for model_id in models:
-    for voice_id in voices: # Değişken ismini voice_id olarak değiştirdik, daha doğru
+# 4. Her komut için ses üretme döngüsü
+for cmd_index, command_text in enumerate(commands, start=1):
+    
+    # Her komut için ayrı klasör oluştur
+    command_folder_name = command_text.lower().replace(" ", "_")[:50]  # İlk 50 karakter
+    command_output_dir = os.path.join(output_dir, command_folder_name)
+    os.makedirs(command_output_dir, exist_ok=True)
+    
+    print("\n" + "=" * 80)
+    print(f"🎯 Komut {cmd_index}/{len(commands)}: '{command_text}'")
+    print(f"📁 Klasör: {command_output_dir}")
+    print("=" * 80)
+    
+    counter = 1  # Her komut için sayacı sıfırla
+    total_combinations = len(voices) * len(models)
+    
+    for model_id in models:
+        for voice_id in voices:
+            
+            # Dosya adını oluştur
+            filename = f"{command_folder_name}_{counter:02d}.mp3"
+            filepath = os.path.join(command_output_dir, filename)
+            
+            print(f"| Başlatılıyor ({counter}/{total_combinations}): Ses ID: {voice_id[:8]}..., Model: {model_id}")
+            
+            try:
+                # API Çağrısı
+                audio_stream = client.text_to_speech.convert(
+                    text=command_text,
+                    voice_id=voice_id,
+                    model_id=model_id,
+                    output_format="mp3_44100_128"
+                )
+                
+                # Ses akışını alıp dosyaya kaydetme
+                with open(filepath, 'wb') as f:
+                    for chunk in audio_stream:
+                        if chunk:
+                            f.write(chunk)
+                
+                print(f"| ✅ BAŞARILI: Dosya kaydedildi -> {filename}")
+                counter += 1
+                
+            except Exception as e:
+                print(f"| ❌ HATA: Ses ID {voice_id[:8]}... / {model_id} kombinasyonunda sorun oluştu.")
+                print(f"| Hata Detayı: {e}")
         
-        # Dosya adını oluştur: BASE_FILENAME + Ardışık Numara (01, 02, 03...)
-        # {:02d} formatı, sayıyı iki haneli (01, 02) yapar.
-        filename = f"{BASE_FILENAME}_{counter:02d}.mp3"
-        filepath = os.path.join(output_dir, filename)
+        print("-" * 80)
 
-        print(f"| Başlatılıyor ({counter}/{total_combinations}): Ses ID: {voice_id[:8]}..., Model: {model_id}")
-
-        try:
-            # API Çağrısı
-            audio_stream = client.text_to_speech.convert(
-                text=TEXT_TO_CONVERT,
-                voice_id=voice_id,
-                model_id=model_id,
-                output_format="mp3_44100_128" 
-            )
-
-            # Ses akışını alıp dosyaya kaydetme
-            with open(filepath, 'wb') as f:
-                for chunk in audio_stream:
-                    if chunk:
-                        f.write(chunk)
-            
-            print(f"| ✅ BAŞARILI: Dosya kaydedildi -> {filepath}")
-            counter += 1 # Başarılı kayıttan sonra sayacı artır
-
-        except Exception as e:
-            # Hata oluşsa bile, döngü devam etmeli, ancak sayaç artmamalı.
-            print(f"| ❌ HATA: Ses ID {voice_id[:8]}... / {model_id} kombinasyonunda sorun oluştu.")
-            print(f"| Hata Detayı: {e}")
-            
-    print("-" * 60)
-
-print("✅ Tüm işlemler tamamlandı.")
-print(f"Ses dosyalarını '{output_dir}' klasöründe bulabilirsiniz.")
+print("\n" + "=" * 80)
+print("✅ Tüm işlemler tamamlandı!")
+print(f"📂 Ses dosyalarını '{output_dir}' klasöründe bulabilirsiniz.")
+print(f"📊 Toplam {len(commands)} komut işlendi.")
+print("=" * 80)

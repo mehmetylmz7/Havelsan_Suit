@@ -1,8 +1,16 @@
 import os
 # Yeni kütüphane yapısına uygun doğru içe aktarma
 from elevenlabs.client import ElevenLabs 
+
+from dotenv import load_dotenv
+
+# .env dosyasını yükle
+load_dotenv()
+
+# API anahtarını ortam değişkeninden al
+YOUR_API_KEY = os.getenv("ELEVENLABS_API_KEY")
 # Buraya kendi API anahtarını gir
-client = ElevenLabs(api_key="3a59981d712e9a7357489c9b2cd8058ba34157b9b0061468790ca349b8e66d05")
+client = ElevenLabs(api_key=YOUR_API_KEY)
 
 # Mevcut tüm sesleri listele
 voices = client.voices.get_all()

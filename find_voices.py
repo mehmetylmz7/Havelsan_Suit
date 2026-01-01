@@ -1,8 +1,17 @@
 import os
 from elevenlabs.client import ElevenLabs
+from dotenv import load_dotenv
 
-# API ANAHTARINIZ (Kod içinde güvensiz kullanım)
-YOUR_API_KEY = "3a59981d712e9a7357489c9b2cd8058ba34157b9b0061468790ca349b8e66d05" 
+# .env dosyasını yükle
+load_dotenv()
+
+# API anahtarını ortam değişkeninden al
+YOUR_API_KEY = os.getenv("ELEVENLABS_API_KEY")
+if not YOUR_API_KEY:
+    print("❌ HATA: ELEVENLABS_API_KEY ortam değişkeni ayarlı değil.")
+    print("Lütfen .env dosyasında ELEVENLABS_API_KEY değişkenini tanımlayın.")
+    exit(1)
+ 
 
 def get_all_voice_ids(api_key: str):
     """ElevenLabs API'sinden hesaptaki tüm seslerin ID'lerini çeker."""

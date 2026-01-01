@@ -1,6 +1,8 @@
 venv/
 .env
 outputs/
+wavs/
+converted_audio/
 __pycache__/
 *.pyc
 .DS_Store
