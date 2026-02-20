@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Whisper ASR - Turkish Military Commands</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+
+<body>
+    <div class="container">
+        <!-- ============================================================= -->
+        <!-- Header -->
+        <!-- ============================================================= -->
+        <header>
+            <h1>🎤 Whisper ASR Test Interface</h1>
+            <p class="subtitle">Turkish Military Voice Command Recognition</p>
+        </header>
+
+        <div class="main-content">
+            <!-- ============================================================= -->
+            <!-- Model Selection -->
+            <!-- ============================================================= -->
+            <div class="card">
+                <h2>Model Seçimi</h2>
+                <div class="model-selection">
+                    <select id="modelSelect" class="model-dropdown">
+                        <option value="">Yükleniyor...</option>
+                    </select>
+                    <div id="modelInfo" class="model-info"></div>
+                </div>
+            </div>
+
+            <!-- ============================================================= -->
+            <!-- Audio Input -->
+            <!-- ============================================================= -->
+            <div class="card">
+                <h2>Ses Girişi</h2>
+
+                <!-- Microphone Recording -->
+                <div class="input-section">
+                    <h3>🎙️ Mikrofon İle Kaydet</h3>
+                    <div class="controls">
+                        <button id="recordBtn" class="btn btn-primary">
+                            <span class="icon">●</span> Kaydı Başlat
+                        </button>
+                        <button id="stopBtn" class="btn btn-secondary" disabled>
+                            <span class="icon">■</span> Durdur
+                        </button>
+                    </div>
+
+                    <div id="recordingStatus" class="status"></div>
+
+                    <audio id="audioPlayback"
+                           controls
+                           style="display:none; width:100%; margin-top:10px;">
+                    </audio>
+                </div>
+
+                <!-- File Upload -->
+                <div class="input-section">
+                    <h3>📁 Dosya Yükle</h3>
+                    <div class="file-upload-area" id="fileUploadArea">
+                        <p>WAV veya MP3 dosyası sürükle-bırak veya tıkla</p>
+                        <input type="file"
+                               id="fileInput"
+                               accept="audio/wav,audio/mp3,audio/mpeg"
+                               hidden>
+                    </div>
+                    <div id="fileName" class="file-name"></div>
+                </div>
+
+                <!-- Transcribe Button -->
+                <button id="transcribeBtn"
+                        class="btn btn-success btn-large"
+                        disabled>
+                    🔊 Transcribe Et
+                </button>
+            </div>
+
+            <!-- ============================================================= -->
+            <!-- Results -->
+            <!-- ============================================================= -->
+            <div class="card results-card" id="resultsCard" style="display:none;">
+                <h2>📝 Sonuç</h2>
+                <div id="results">
+                    <div class="result-item">
+                        <span class="model-label">Kullanılan Model:</span>
+                        <span id="usedModel">-</span>
+                    </div>
+
+                    <div class="transcription-box">
+                        <p id="transcriptionText"></p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ============================================================= -->
+            <!-- Realtime ASR -->
+            <!-- ============================================================= -->
+            <!--<div class="card">
+                <h2>⚡ Realtime ASR (Canlı)</h2>
+
+                <div class="input-section">
+                    <p class="subtitle">
+                        Mikrofon → 1 saniyelik parçalar → Anlık metin
+                    </p>
+
+                    <div class="controls">
+                        <button id="realtimeStartBtn" class="btn btn-primary">
+                            🎙️ Realtime Başlat
+                        </button>
+                        <button id="realtimeStopBtn"
+                                class="btn btn-secondary"
+                                disabled>
+                            ⏹️ Durdur
+                        </button>
+                    </div>
+
+                    <div id="realtimeStatus" class="status"></div>
+
+                    <div class="transcription-box" style="margin-top:15px;">
+                        <p id="realtimeText" style="white-space: pre-wrap;"></p>
+                    </div>
+                </div>
+            </div>
+        </div>-->
+
+        <!-- ============================================================= -->
+        <!-- Footer -->
+        <!-- ============================================================= -->
+        <footer>
+            <p>Havelsan Suit - Whisper Fine-Tuning Project © 2026</p>
+        </footer>
+    </div>
+
+    <!-- ============================================================= -->
+    <!-- Scripts -->
+    <!-- ============================================================= -->
+    <script src="{{ url_for('static', filename='js/recorder.js') }}"></script>
+    <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+    <script src="{{ url_for('static', filename='js/realtime.js') }}"></script>
+</body>
+</html>

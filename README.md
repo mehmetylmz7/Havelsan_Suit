@@ -1,209 +1,193 @@
-# Havelsan Suit - ElevenLabs Ses Üretim ve Dönüştürme Araçları
+# Havelsan Suit - Whisper Fine-Tuning & ASR Web Interface
 
-ElevenLabs API kullanarak Türkçe komutlar için ses dosyaları üreten ve MP3'leri WAV formatına dönüştüren kapsamlı araç seti.
+Sentetik Turkish military voice command verileri ile Whisper small model fine-tuning ve web tabanlı test arayüzü projesi.
+
+## 🎯 Proje Hedefi
+
+1. ElevenLabs API ile sentetik ses verileri üretme
+2. 16kHz mono WAV formatına dönüştürme  
+3. Whisper small modelini Türkçe askeri komutlar için fine-tune etme
+4. Web arayüzünde model performansını test etme
+
+## 📁 Proje Yapısı
+
+```
+Havelsan_Suit/
+├── data/                          # Veri seti klasörü
+│   ├── raw/outputs/              # Ham MP3 dosyaları (16 komut × 24)
+│   ├── preprocessed/wavs/        # 16kHz mono WAV'lar
+│   ├── transcriptions/           # Metadata ve eşleştirmeler
+│   └── dataset/                  # Hugging Face dataset format
+├── training/                      # Fine-tuning altyapısı
+│   ├── prepare_dataset.py        # Dataset hazırlama
+│   ├── train_whisper.py          # Model eğitimi
+│   └── checkpoints/              # Model checkpoint'leri
+├── web_app/                       # Web arayüzü
+│   ├── app.py                    # Flask backend
+│   ├── templates/                # HTML şablonlar
+│   ├── static/                   # CSS, JS
+│   └── models/                   # Fine-tuned model
+├── scripts/                       # Yardımcı scriptler
+│   ├── audio_generation/         # ElevenLabs ses üretimi
+│   └── audio_conversion/         # MP3 → WAV dönüştürme
+├── utils/                         # Utility fonksiyonlar
+├── commands.json                  # 16 türkçe askeri komut
+└── requirements.txt              # Python bağımlılıkları
+```
 
 ## 🚀 Kurulum
 
-### 1. Python Sanal Ortamını Aktif Edin
+### 1. Python Ortamı
 ```bash
+python3 -m venv venv
 source venv/bin/activate
-```
-
-### 2. Bağımlılıkları Kurun
-```bash
 pip install -r requirements.txt
 ```
 
-### 3. FFmpeg Kurulumu (converter.py için gerekli)
+### 2. FFmpeg (Ses işleme için gerekli)
 ```bash
 sudo apt-get install -y ffmpeg
 ```
 
-### 4. API Anahtarını Ayarlayın
-`.env.example` dosyasını `.env` olarak kopyalayın:
+### 3. API Anahtarı (.env dosyası)
 ```bash
 cp .env.example .env
+# .env dosyasına ElevenLabs API anahtarınızı ekleyin
 ```
 
-`.env` dosyasını düzenleyin ve kendi ElevenLabs API anahtarınızı ekleyin:
-```env
-ELEVENLABS_API_KEY=gerçek_api_anahtarınız_buraya
-```
+## 📊 Tam İş Akışı
 
-## 📋 Kullanılabilir Scriptler
+### Adım 1: Ses Verileri Üretimi (İsteğe bağlı)
+Veri zaten mevcut, ancak yeni veri üretmek için:
 
-### 1. `check_api.py` - API Anahtarı Kontrolü
-API anahtarınızın geçerli olup olmadığını kontrol eder.
-
-**Kullanım:**
 ```bash
-python check_api.py
+cd scripts/audio_generation
+python generate_speech.py  # MP3 üretimi
+cd ../audio_conversion
+python converter.py         # WAV dönüşümü
+```
+
+### Adım 2: Dataset Hazırlama
+```bash
+cd training
+python prepare_dataset.py
 ```
 
 **Çıktı:**
-- API anahtarı geçerliyse: Hesaptaki ses sayısı ve ilk 3 ses
-- API anahtarı geçersizse: Hata mesajı
+- `data/transcriptions/metadata.csv` - Ses-metin eşleştirmeleri
+- `data/dataset/` - Hugging Face Dataset (train/val split)
 
----
-
-### 2. `find_voices.py` - Ses ID'lerini Bulma
-Hesabınızdaki tüm seslerin ID'lerini ve isimlerini listeler.
-
-**Kullanım:**
+### Adım 3: Model Fine-Tuning
 ```bash
-python find_voices.py
+python train_whisper.py
 ```
+
+**Parametreler** (script içinde düzenleyin):
+- Model: `openai/whisper-small`
+- Learning rate: `1e-5`
+- Batch size: `8` (GPU'nuza göre ayarlayın)
+- Epochs: `10`
 
 **Çıktı:**
-- Tüm seslerin adları ve ID'leri
-- Bu ID'leri `generate_speech.py` içinde kullanabilirsiniz
+- `training/checkpoints/` - Training checkpoints
+- `training/checkpoints/fine_tuned_whisper_small/` - Final model
 
----
-
-### 3. `generate_speech.py` - Toplu Ses Üretimi
-`commands.json` dosyasındaki tüm komutlar için ses dosyaları üretir.
-
-**Kullanım:**
+### Adım 4: Modeli Web App'e Taşıma
 ```bash
-python generate_speech.py
+cp -r training/checkpoints/fine_tuned_whisper_small web_app/models/
 ```
 
-**Özellikler:**
-- `commands.json` dosyasından komutları okur (şu anda 16 komut)
-- Her komut için 30 farklı varyasyon oluşturur (10 ses × 3 model)
-- Toplam ~480 ses dosyası üretir
-- Çıktılar `outputs/` klasöründe komut bazlı organize edilir
-
-**Çıktı Yapısı:**
-```
-outputs/
-├── üç_numaralı_trak_designeyt_edildi/
-│   ├── üç_numaralı_trak_designeyt_edildi_01.mp3
-│   ├── üç_numaralı_trak_designeyt_edildi_02.mp3
-│   └── ...
-├── traklara_angajman_yap/
-│   ├── traklara_angajman_yap_01.mp3
-│   └── ...
-└── ...
-```
-
----
-
-### 4. `converter.py` - MP3 → WAV Dönüştürücü
-MP3 dosyalarını 16kHz mono PCM WAV formatına toplu dönüştürür.
-
-**Kullanım:**
+### Adım 5: Web Arayüzünü Başlatma
 ```bash
-python converter.py
+cd web_app
+python app.py
 ```
 
-**Özellikler:**
-- `outputs/` klasöründeki tüm alt klasörleri otomatik tarar
-- Her MP3'ü 16kHz, mono, PCM WAV formatına dönüştürür
-- Çıktılar `wavs/` klasöründe komut bazlı organize edilir
-- FFmpeg kullanır (kurulu olmalı)
+Tarayıcıda: `http://localhost:5000`
 
-**Çıktı Yapısı:**
-```
-wavs/
-├── üç_numaralı_trak_designeyt_edildi/
-│   ├── üç_numaralı_trak_designeyt_edildi_01.wav
-│   ├── üç_numaralı_trak_designeyt_edildi_02.wav
-│   └── ...
-├── traklara_angajman_yap/
-│   ├── traklara_angajman_yap_01.wav
-│   └── ...
-└── ...
-```
+## 🌐 Web Arayüzü Özellikleri
 
-**Yapılandırma:**
-`converter.py` dosyasındaki bu değişkenleri düzenleyebilirsiniz:
-- `OUTPUT_BASE_DIR`: Çıktı klasörü (varsayılan: `/home/wololoo/Havelsan_Suit/wavs`)
-- `TARGET_RATE`: Örnekleme hızı (varsayılan: 16000 Hz)
-- `TARGET_CHANNELS`: Kanal sayısı (varsayılan: 1 - Mono)
+### 🎤 Mikrofon Kaydı
+- Tarayıcıdan doğrudan ses kaydı
+- Real-time playback
 
----
+### 📁 Dosya Yükleme
+- Drag & drop desteği
+- WAV/MP3 formatları
 
-## 📁 Proje Yapısı
-```
-Havelsan_Suit/
-├── .env                    # API anahtarı (GİZLİ - git'e eklenmez)
-├── .env.example            # .env şablonu
-├── commands.json           # Komut listesi (16 komut)
-├── check_api.py            # API test scripti
-├── find_voices.py          # Ses ID bulma scripti
-├── generate_speech.py      # Ana ses üretim scripti
-├── converter.py            # MP3 → WAV dönüştürücü
-├── requirements.txt        # Python bağımlılıkları
-├── outputs/                # Üretilen MP3 dosyaları
-│   ├── komut_1/
-│   └── komut_2/
-└── wavs/                   # Dönüştürülen WAV dosyaları
-    ├── komut_1/
-    └── komut_2/
+### 🤖 Model Seçimi
+- Original Whisper Small
+- Fine-Tuned Model
+
+### ⚖️ Karşılaştırma Modu
+Aynı ses dosyasını her iki modelle test edip sonuçları yan yana görüntüle
+
+## 📋 Komut Listesi
+
+`commands.json` dosyasında 16 Türkçe askeri komut:
+- "üç numaralı trak designeyt edildi"
+- "traklara angajman yap"
+- "treklere engagement yap"
+- "izlere fix at"
+- ve daha fazlası...
+
+## 🔧 Konfigürasyon
+
+### Fine-Tuning Parametreleri
+`training/train_whisper.py` içinde:
+```python
+LEARNING_RATE = 1e-5
+BATCH_SIZE = 8
+EPOCHS = 10
 ```
 
-## 🔄 Tam İş Akışı
-
-### Adım 1: Sesleri Kontrol Edin
-```bash
-python find_voices.py
+### Model Path'leri
+`web_app/app.py` içinde:
+```python
+ORIGINAL_MODEL = "openai/whisper-small"
+FINETUNED_MODEL_PATH = Path("./models/fine_tuned_whisper_small")
 ```
 
-### Adım 2: Ses Dosyaları Üretin
-```bash
-python generate_speech.py
-```
+## 📊 Değerlendirme
 
-### Adım 3: MP3'leri WAV'a Dönüştürün
-```bash
-python converter.py
-```
+Model performansı **WER (Word Error Rate)** metriği ile ölçülür:
+- Training sırasında validation WER
+- Final evaluation sonuçları
 
-## ⚙️ Yapılandırma
+## 💡 İpuçları
 
-### Komut Listesini Düzenleme
-`commands.json` dosyasını düzenleyerek yeni komutlar ekleyebilir veya mevcut komutları değiştirebilirsiniz:
+**GPU Kullanımı:**
+- CUDA varsa otomatik kullanılır
+- CPU'da da çalışır (daha yavaş)
 
-```json
-{
-    "commands": [
-        "yeni komut 1",
-        "yeni komut 2"
-    ]
-}
-```
+**Memory Optimization:**
+- Batch size'ı GPU memory'nize göre ayarlayın
+- FP16 precision (GPU'da otomatik aktif)
 
-### Ses ve Model Seçimi
-`generate_speech.py` dosyasındaki `voices` ve `models` listelerini düzenleyerek kullanılacak sesleri ve modelleri değiştirebilirsiniz.
-
-## ⚠️ Önemli Notlar
-- `.env` dosyasını **asla** git'e yüklemeyin
-- API anahtarınızı kimseyle paylaşmayın
-- Ses üretimi API kullanım kotanızı tüketir
-- FFmpeg, MP3 → WAV dönüşümü için gereklidir
-- Tüm scriptler `.env` dosyasından API anahtarını okur
-
-## 📦 Bağımlılıklar
-- `elevenlabs` - ElevenLabs API istemcisi
-- `python-dotenv` - Ortam değişkeni yönetimi
-- `pydub` - Ses dosyası işleme
-- `ffmpeg` - Ses formatı dönüştürme (sistem paketi)
+**Dataset Split:**
+- 80% training / 20% validation
+- Stratified split (her komuttan dengeli)
 
 ## 🆘 Sorun Giderme
 
-### "ModuleNotFoundError: No module named 'pydub'"
-```bash
-pip install pydub
+**"CUDA out of memory":**
+```python
+# train_whisper.py içinde batch size'ı düşürün
+BATCH_SIZE = 4
 ```
 
-### "Couldn't find ffmpeg or avconv"
+**"ModuleNotFoundError":**
 ```bash
-sudo apt-get install -y ffmpeg
+pip install -r requirements.txt --upgrade
 ```
 
-### "ELEVENLABS_API_KEY ortam değişkeni ayarlı değil"
-`.env` dosyasını oluşturun ve API anahtarınızı ekleyin.
+**Web arayüzü mikrofon erişimi:**
+- HTTPS veya localhost gerekli
+- Tarayıcı izinlerini kontrol edin
 
 ## 📄 Lisans
-Bu proje MIT lisansı altında lisanslanmıştır.
+MIT License
+
+---
+
+**Not:** Bu proje eğitim amaçlıdır. Production kullanımı için ek optimizasyonlar gerekebilir.
