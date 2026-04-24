@@ -15,6 +15,7 @@ data/raw/
 data/preprocessed/
 data/augmented/
 data/dataset/
+data/*/
 
 # ── Modeller ─────────────────────────────────────────────
 models/

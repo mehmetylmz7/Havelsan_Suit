@@ -1,239 +1,235 @@
-#!/usr/bin/env python3
-"""
-Ses Augmentasyon Scripti
-========================
-Her komut klasöründeki mevcut sesleri augmentasyon teknikleriyle çoğaltır.
-
-Mevcut: 24 ses/komut
-Hedef : 150 ses/komut (varsayılan)
-
-Augmentasyon teknikleri:
-  1. Gürültü ekleme (Gaussian noise)
-  2. Hız değiştirme (time stretching)
-  3. Pitch kaydırma
-  4. Ses seviyesi değiştirme (gain)
-  5. Room impulse response (oda yankısı)
-  6. Low-pass / High-pass filtre
-"""
-
-import os
+import csv
 import shutil
-import random
-import argparse
-import numpy as np
-import librosa
-import soundfile as sf
 from pathlib import Path
+
+import numpy as np
+import soundfile as sf
+import librosa
+from tqdm import tqdm
+
 from audiomentations import (
-    Compose,
     AddGaussianNoise,
     TimeStretch,
     PitchShift,
     Gain,
     LowPassFilter,
     HighPassFilter,
-    Shift,
     ClippingDistortion,
 )
 
-# ─────────────────────────────────────────────
-# Augmentasyon pipeline'ları
-# ─────────────────────────────────────────────
+# =========================
+# CONFIG
+# =========================
+IN_ROOT = Path("/home/wololoo/Havelsan_Suit/data/preprocessed/wavs")
+OUT_ROOT = Path("/home/wololoo/Havelsan_Suit/data/augmented_dataset")
 
-def make_pipelines():
-    """Farklı augmentasyon kombinasyonlarından oluşan pipeline listesi döndürür."""
-    pipelines = [
-        # 1. Hafif gürültü
-        Compose([AddGaussianNoise(min_amplitude=0.001, max_amplitude=0.010, p=1.0)]),
-        # 2. Orta gürültü
-        Compose([AddGaussianNoise(min_amplitude=0.010, max_amplitude=0.025, p=1.0)]),
-        # 3. Yavaş konuşma
-        Compose([TimeStretch(min_rate=0.85, max_rate=0.95, p=1.0)]),
-        # 4. Hızlı konuşma
-        Compose([TimeStretch(min_rate=1.05, max_rate=1.15, p=1.0)]),
-        # 5. Düşük pitch
-        Compose([PitchShift(min_semitones=-3, max_semitones=-1, p=1.0)]),
-        # 6. Yüksek pitch
-        Compose([PitchShift(min_semitones=1, max_semitones=3, p=1.0)]),
-        # 7. Ses seviyesi düşük
-        Compose([Gain(min_gain_db=-8, max_gain_db=-3, p=1.0)]),
-        # 8. Ses seviyesi yüksek
-        Compose([Gain(min_gain_db=3, max_gain_db=8, p=1.0)]),
-        # 9. Low-pass filtre (bulanık ses)
-        Compose([LowPassFilter(min_cutoff_freq=2000, max_cutoff_freq=4000, p=1.0)]),
-        # 10. High-pass filtre (ince ses)
-        Compose([HighPassFilter(min_cutoff_freq=200, max_cutoff_freq=600, p=1.0)]),
-        # 11. Zaman kaydırma
-        Compose([Shift(min_shift=-0.1, max_shift=0.1, p=1.0)]),
-        # 12. Gürültü + hız
-        Compose([
-            AddGaussianNoise(min_amplitude=0.003, max_amplitude=0.012, p=1.0),
-            TimeStretch(min_rate=0.90, max_rate=1.10, p=1.0),
-        ]),
-        # 13. Gürültü + pitch kaydırma
-        Compose([
-            AddGaussianNoise(min_amplitude=0.003, max_amplitude=0.012, p=1.0),
-            PitchShift(min_semitones=-2, max_semitones=2, p=1.0),
-        ]),
-        # 14. Hafif distortion
-        Compose([ClippingDistortion(min_percentile_threshold=90, max_percentile_threshold=97, p=1.0)]),
-        # 15. Kompleks kombinasyon
-        Compose([
-            AddGaussianNoise(min_amplitude=0.002, max_amplitude=0.008, p=0.8),
-            TimeStretch(min_rate=0.92, max_rate=1.08, p=0.8),
-            PitchShift(min_semitones=-1, max_semitones=1, p=0.8),
-            Gain(min_gain_db=-4, max_gain_db=4, p=0.8),
-        ]),
-    ]
-    return pipelines
+SAMPLE_RATE = 16000
+COPY_ORIGINALS = True
+META_NAME = "metadata.csv"
 
+# =========================
+# CANONICAL TEXT MAPPING
+# =========================
+FOLDER_TO_TEXT = {
+    "üç_numaralı_trak_designeyt_edildi": "üç numaralı track designate edildi",
+    "üç_numaralı_iz_designeyt_edildi": "üç numaralı iz designate edildi",
+    "üç_numaralı_traki_çiz": "üç numaralı track’i çiz",
+    "treklere_angajman_yap": "track’lere angajman yap",
+    "traklara_angajman_yap": "track’lara angajman yap",
+    "treklere_engagement_yap": "track’lere engagement yap",
+    "traklara_engagement_yap": "track’lara engagement yap",
+    "izlere_fix_at": "izlere fix at",
+    "traklara_fix_at": "track’lere fix at",
+    "treklere_fix_at": "track’lere fix at",
+    "kerterizlere_fix_yap": "kerterizlere fix yap",
+    "engeyçment_yap": "engagement yap",
+    "emercensi_moda_geç": "emergency moda geç",
+    "track_three_designate_yap": "track three designate yap",
+    "battleshort_durumuna_geç": "battleshort durumuna geç",
+    "advent_sistemi_aktif": "advent sistemi aktif",
+}
 
-def load_audio(path: Path, target_sr: int = 16000):
-    """MP3/WAV ses dosyasını yükler, mono + hedef SR'ye dönüştürür."""
-    audio, sr = librosa.load(str(path), sr=target_sr, mono=True)
-    return audio, sr
+# =========================
+# KONTROLLÜ AUGMENT VARYANTLARI
+# Her yöntem için sabit 3 varyant
+# =========================
+AUGMENTATION_VARIANTS = {
+    "pitchshift": [
+        ("thin", PitchShift(min_semitones=3, max_semitones=4, p=1.0)),
+        ("orig", None),
+        ("thick", PitchShift(min_semitones=-4, max_semitones=-3, p=1.0)),
+    ],
+    "timestretch": [
+        ("slow", TimeStretch(min_rate=0.84, max_rate=0.90, p=1.0)),
+        ("orig", None),
+        ("fast", TimeStretch(min_rate=1.10, max_rate=1.16, p=1.0)),
+    ],
+    "gain": [
+        ("low", Gain(min_gain_db=-10, max_gain_db=-6, p=1.0)),
+        ("orig", None),
+        ("high", Gain(min_gain_db=6, max_gain_db=10, p=1.0)),
+    ],
+    "gaussian_noise": [
+        ("light", AddGaussianNoise(min_amplitude=0.002, max_amplitude=0.006, p=1.0)),
+        ("medium", AddGaussianNoise(min_amplitude=0.008, max_amplitude=0.015, p=1.0)),
+        ("strong", AddGaussianNoise(min_amplitude=0.018, max_amplitude=0.030, p=1.0)),
+    ],
+    "lowpass": [
+        ("mild", LowPassFilter(min_cutoff_freq=4500, max_cutoff_freq=5500, p=1.0)),
+        ("medium", LowPassFilter(min_cutoff_freq=3000, max_cutoff_freq=4000, p=1.0)),
+        ("strong", LowPassFilter(min_cutoff_freq=1800, max_cutoff_freq=2500, p=1.0)),
+    ],
+    "highpass": [
+        ("mild", HighPassFilter(min_cutoff_freq=80, max_cutoff_freq=140, p=1.0)),
+        ("medium", HighPassFilter(min_cutoff_freq=180, max_cutoff_freq=260, p=1.0)),
+        ("strong", HighPassFilter(min_cutoff_freq=320, max_cutoff_freq=500, p=1.0)),
+    ],
+    "clipping": [
+        ("mild", ClippingDistortion(min_percentile_threshold=1, max_percentile_threshold=4, p=1.0)),
+        ("medium", ClippingDistortion(min_percentile_threshold=5, max_percentile_threshold=10, p=1.0)),
+        ("strong", ClippingDistortion(min_percentile_threshold=12, max_percentile_threshold=20, p=1.0)),
+    ],
+}
 
+# =========================
+# HELPERS
+# =========================
+def is_augmented_filename(path: Path) -> bool:
+    stem = path.stem.lower()
+    return "__aug" in stem or "__orig" in stem
 
-def save_audio(audio: np.ndarray, sr: int, out_path: Path):
-    """Ses verisini WAV olarak kaydeder."""
-    out_path.parent.mkdir(parents=True, exist_ok=True)
-    sf.write(str(out_path), audio, sr, subtype="PCM_16")
+def load_wav_mono_16k(path: Path) -> np.ndarray:
+    y, _ = librosa.load(str(path), sr=SAMPLE_RATE, mono=True)
+    return y.astype(np.float32)
 
+def save_wav(path: Path, y: np.ndarray):
+    path.parent.mkdir(parents=True, exist_ok=True)
+    sf.write(str(path), y, SAMPLE_RATE)
 
-def augment_directory(
-    input_dir: Path,
-    output_dir: Path,
-    target_count: int = 150,
-    target_sr: int = 16000,
-    seed: int = 42,
-):
-    """
-    Bir komut klasöründeki sesleri augmentasyon ile `target_count` adede çıkartır.
+def copy_file(src: Path, dst: Path):
+    dst.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copy2(src, dst)
 
-    Orijinal dosyalar olduğu gibi kopyalanır, ardından eksik kalan sayı kadar
-    augmente kopya oluşturulur.
-    """
-    random.seed(seed)
-    np.random.seed(seed)
+def relative_to_method_root(method_root: Path, file_path: Path) -> str:
+    return file_path.relative_to(method_root).as_posix()
 
-    src_files = sorted(input_dir.glob("*.mp3")) + sorted(input_dir.glob("*.wav"))
-    if not src_files:
-        print(f"  [UYARI] Ses dosyası bulunamadı: {input_dir}")
-        return
+def write_metadata_csv(meta_path: Path, rows):
+    meta_path.parent.mkdir(parents=True, exist_ok=True)
+    with meta_path.open("w", newline="", encoding="utf-8") as f:
+        writer = csv.writer(f)
+        writer.writerow(["file", "text"])
+        writer.writerows(rows)
 
-    cmd_name = input_dir.name
-    output_dir.mkdir(parents=True, exist_ok=True)
+# =========================
+# MAIN
+# =========================
+def build_augmented_dataset():
+    if not IN_ROOT.exists():
+        raise FileNotFoundError(f"Girdi dizini yok: {IN_ROOT}")
 
-    # 1. Orijinalleri kopyala (WAV'a dönüştür)
-    originals_out = []
-    for i, src in enumerate(src_files, start=1):
-        audio, sr = load_audio(src, target_sr)
-        dst = output_dir / f"{cmd_name}_{i:03d}.wav"
-        save_audio(audio, sr, dst)
-        originals_out.append((audio, sr, i))
-    
-    existing_count = len(originals_out)
-    print(f"  Orijinal: {existing_count} dosya kopyalandı")
+    OUT_ROOT.mkdir(parents=True, exist_ok=True)
 
-    if existing_count >= target_count:
-        print(f"  Zaten {existing_count} dosya var, augmentasyon gerekmez.")
-        return
+    command_dirs = sorted([p for p in IN_ROOT.iterdir() if p.is_dir()])
+    if not command_dirs:
+        raise RuntimeError(f"Komut klasörü bulunamadı: {IN_ROOT}")
 
-    # 2. Augmentasyon ile doldurun
-    pipelines = make_pipelines()
-    needed = target_count - existing_count
-    aug_idx = existing_count + 1
+    print(f"Komut klasörü sayısı: {len(command_dirs)}")
 
-    pipeline_cycle = 0
-    while needed > 0:
-        # Kaynak ses rastgele seç
-        audio, sr, _ = random.choice(originals_out)
-        
-        # Pipeline döngüsel seç
-        pipeline = pipelines[pipeline_cycle % len(pipelines)]
-        pipeline_cycle += 1
+    metadata_rows = {method_name: [] for method_name in AUGMENTATION_VARIANTS.keys()}
+    if COPY_ORIGINALS:
+        metadata_rows["originals"] = []
 
-        try:
-            aug_audio = pipeline(samples=audio.copy(), sample_rate=sr)
-        except Exception as e:
-            print(f"    [HATA] Augmentasyon başarısız: {e}, atlanıyor...")
+    total_originals = 0
+    total_generated = {method_name: 0 for method_name in AUGMENTATION_VARIANTS.keys()}
+
+    for cmd_dir in command_dirs:
+        cmd_id = cmd_dir.name
+
+        if cmd_id not in FOLDER_TO_TEXT:
+            raise KeyError(f"FOLDER_TO_TEXT mapping eksik: '{cmd_id}'")
+
+        clean_text = FOLDER_TO_TEXT[cmd_id]
+
+        wavs = sorted([w for w in cmd_dir.glob("*.wav") if not is_augmented_filename(w)])
+        if not wavs:
+            print(f"[Uyarı] {cmd_id} içinde wav yok, atlanıyor.")
             continue
 
-        dst = output_dir / f"{cmd_name}_{aug_idx:03d}_aug.wav"
-        save_audio(aug_audio, sr, dst)
-        aug_idx += 1
-        needed -= 1
+        for src_wav in tqdm(wavs, desc=cmd_id):
+            total_originals += 1
 
-    total = len(list(output_dir.glob("*.wav")))
-    print(f"  Augmentasyon tamamlandı → toplam {total} dosya")
+            y = load_wav_mono_16k(src_wav)
+            if y is None or len(y) == 0:
+                print(f"[Uyarı] Boş/okunamayan dosya: {src_wav}")
+                continue
 
+            base = src_wav.stem
 
-def main():
-    parser = argparse.ArgumentParser(
-        description="Ses augmentasyon scripti – komut seslerini çoğaltır"
-    )
-    parser.add_argument(
-        "--input_dir",
-        type=str,
-        default="/home/wololoo/Havelsan_Suit/data/raw/outputs",
-        help="Komut klasörlerinin bulunduğu ana dizin",
-    )
-    parser.add_argument(
-        "--output_dir",
-        type=str,
-        default="/home/wololoo/Havelsan_Suit/data/augmented",
-        help="Augmente edilmiş seslerin kaydedileceği dizin",
-    )
-    parser.add_argument(
-        "--target",
-        type=int,
-        default=150,
-        help="Her komut için hedef ses sayısı (varsayılan: 150)",
-    )
-    parser.add_argument(
-        "--sr",
-        type=int,
-        default=16000,
-        help="Hedef örnekleme frekansı Hz (varsayılan: 16000)",
-    )
-    parser.add_argument(
-        "--seed",
-        type=int,
-        default=42,
-        help="Rastgelelik tohumu (varsayılan: 42)",
-    )
-    args = parser.parse_args()
+            # -------------------------
+            # ORİJİNALLERİ AYRI KLASÖRE KOPYALA
+            # -------------------------
+            if COPY_ORIGINALS:
+                orig_root = OUT_ROOT / "originals"
+                dst_orig = orig_root / cmd_id / src_wav.name
+                copy_file(src_wav, dst_orig)
 
-    input_root = Path(args.input_dir)
-    output_root = Path(args.output_dir)
+                rel_path = relative_to_method_root(orig_root, dst_orig)
+                metadata_rows["originals"].append((rel_path, clean_text))
 
-    cmd_dirs = sorted([d for d in input_root.iterdir() if d.is_dir()])
-    if not cmd_dirs:
-        print("Komut klasörü bulunamadı!")
-        return
+            # -------------------------
+            # HER YÖNTEM İÇİN SABİT VARYANTLAR
+            # -------------------------
+            for method_name, variants in AUGMENTATION_VARIANTS.items():
+                method_root = OUT_ROOT / method_name
 
-    print(f"\n{'='*55}")
-    print(f"  Augmentasyon Başlıyor")
-    print(f"  Giriş : {input_root}")
-    print(f"  Çıkış : {output_root}")
-    print(f"  Hedef : {args.target} ses/komut")
-    print(f"  SR    : {args.sr} Hz")
-    print(f"{'='*55}\n")
+                for variant_name, augmenter in variants:
+                    try:
+                        if augmenter is None:
+                            y_aug = y.copy()
+                        else:
+                            y_aug = augmenter(samples=y, sample_rate=SAMPLE_RATE)
+                    except Exception as e:
+                        print(f"[Hata] {method_name} | {variant_name} | {src_wav.name} | {e}")
+                        continue
 
-    for cmd_dir in cmd_dirs:
-        print(f"[{cmd_dir.name}]")
-        augment_directory(
-            input_dir=cmd_dir,
-            output_dir=output_root / cmd_dir.name,
-            target_count=args.target,
-            target_sr=args.sr,
-            seed=args.seed,
-        )
-        print()
+                    if y_aug is None or len(y_aug) == 0:
+                        continue
 
-    print("✅ Tüm komutlar işlendi!")
-    print(f"   Sonuçlar: {output_root}\n")
+                    out_name = f"{base}__{method_name}_{variant_name}.wav"
+                    dst_aug = method_root / cmd_id / out_name
+                    save_wav(dst_aug, y_aug)
 
+                    rel_path = relative_to_method_root(method_root, dst_aug)
+                    metadata_rows[method_name].append((rel_path, clean_text))
+                    total_generated[method_name] += 1
+
+    # =========================
+    # METADATA YAZ
+    # =========================
+    if COPY_ORIGINALS:
+        orig_meta = OUT_ROOT / "originals" / META_NAME
+        write_metadata_csv(orig_meta, metadata_rows["originals"])
+
+    for method_name in AUGMENTATION_VARIANTS.keys():
+        meta_path = OUT_ROOT / method_name / META_NAME
+        write_metadata_csv(meta_path, metadata_rows[method_name])
+
+    # =========================
+    # ÖZET
+    # =========================
+    print("\n=== ÖZET ===")
+    print(f"Toplam orijinal dosya sayısı: {total_originals}")
+
+    if COPY_ORIGINALS:
+        print(f"[originals] metadata satırı: {len(metadata_rows['originals'])}")
+        print(f"[originals] metadata: {OUT_ROOT / 'originals' / META_NAME}")
+
+    for method_name in AUGMENTATION_VARIANTS.keys():
+        print(f"[{method_name}] üretilen dosya sayısı: {total_generated[method_name]}")
+        print(f"[{method_name}] metadata satırı: {len(metadata_rows[method_name])}")
+        print(f"[{method_name}] metadata: {OUT_ROOT / method_name / META_NAME}")
+
+    print(f"\nOUT_ROOT: {OUT_ROOT}")
 
 if __name__ == "__main__":
-    main()
+    build_augmented_dataset()
