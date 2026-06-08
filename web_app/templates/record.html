@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ses Kayıt Ekranı - ASR Kullanıcı Testi</title>
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Custom Style -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/asr.css') }}">
+</head>
+<body>
+
+    <!-- Header -->
+    <header class="py-3 mb-4">
+        <div class="container d-flex justify-content-between align-items-center">
+            <h1 class="h3 mb-0 fw-bold">ASR Kullanıcı Testi</h1>
+            <span class="badge bg-light text-dark fs-6">Katılımcı: {{ participant_id }}</span>
+        </div>
+    </header>
+
+    <!-- Loading Overlay -->
+    <div id="loadingOverlay" class="loading-overlay d-none">
+        <div class="spinner-border text-light mb-3" style="width: 3rem; height: 3rem;" role="status">
+            <span class="visually-hidden">Yükleniyor...</span>
+        </div>
+        <h4 class="fw-bold">Ses Kaydediliyor</h4>
+        <p class="text-white-50">Ses kaydı sisteme kaydediliyor. Model tahmini 5 komut tamamlandıktan sonra toplu yapılacaktır.</p>
+    </div>
+
+    <!-- Main Content -->
+    <main class="container my-auto py-4">
+        <div class="row justify-content-center">
+            <div class="col-lg-8 col-md-10">
+                <div class="card card-academic p-4 shadow-sm">
+                    <div class="card-header-academic pb-3 mb-4 d-flex justify-content-between align-items-center">
+                        <span class="fs-5">Komut Kaydı</span>
+                        <span class="badge bg-primary fs-6 px-3 py-2">Komut {{ command_index }} / 5</span>
+                    </div>
+                    
+                    <div class="card-body">
+                        <!-- Instructions -->
+                        <div class="text-secondary mb-3 fs-6">
+                            Lütfen aşağıdaki cümleyi mikrofonunuza doğru net ve anlaşılır bir ses tonuyla okuyunuz:
+                        </div>
+
+                        <!-- Command Display -->
+                        <div class="command-display p-4 my-4 text-center fs-2 text-dark shadow-sm">
+                            "{{ command_text }}"
+                        </div>
+
+                        <div class="alert alert-secondary text-center fs-6">
+                            Kullanılan model: <strong>{{ selected_model_name }}</strong>
+                        </div>
+
+                        <!-- Status bar -->
+                        <div class="d-flex align-items-center justify-content-center my-4">
+                            <span id="recordingStatus" class="fs-5 fw-bold text-secondary">
+                                <span class="badge bg-secondary">Kayıt Bekleniyor</span>
+                            </span>
+                        </div>
+
+                        <!-- Audio playback (hidden by default) -->
+                        <div class="text-center my-4 d-none" id="audioPlayerContainer">
+                            <audio id="audioPlayer" controls class="w-100 shadow-sm rounded"></audio>
+                        </div>
+
+                        <!-- Large buttons for Raspberry Pi Touch screen -->
+                        <div class="row g-3">
+                            <div class="col-md-6 col-12 d-grid">
+                                <button type="button" id="startBtn" class="btn btn-pi btn-pi-success shadow-sm">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" fill="currentColor" class="bi bi-mic-fill" viewBox="0 0 16 16">
+                                        <path d="M5 3a3 3 0 0 1 6 0v5a3 3 0 0 1-6 0V3z"/>
+                                        <path d="M3.5 6.5A.5.5 0 0 1 4 7v1a4 4 0 0 0 8 0V7a.5.5 0 0 1 1 0v1a5 5 0 0 1-4.5 4.975V15h3a.5.5 0 0 1 0 1h-7a.5.5 0 0 1 0-1h3v-2.025A5 5 0 0 1 3 8V7a.5.5 0 0 1 .5-.5z"/>
+                                    </svg>
+                                    Kaydı Başlat
+                                </button>
+                            </div>
+                            <div class="col-md-6 col-12 d-grid">
+                                <button type="button" id="stopBtn" class="btn btn-pi btn-pi-danger shadow-sm" disabled>
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" fill="currentColor" class="bi bi-stop-fill" viewBox="0 0 16 16">
+                                        <path d="M5 3.5h6A1.5 1.5 0 0 1 12.5 5v6a1.5 1.5 0 0 1-1.5 1.5H5A1.5 1.5 0 0 1 3.5 11V5A1.5 1.5 0 0 1 5 3.5z"/>
+                                    </svg>
+                                    Kaydı Durdur
+                                </button>
+                            </div>
+                            <div class="col-md-6 col-12 d-grid">
+                                <button type="button" id="playBtn" class="btn btn-pi btn-pi-secondary shadow-sm" disabled>
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" fill="currentColor" class="bi bi-play-fill" viewBox="0 0 16 16">
+                                        <path d="m11.596 8.697-6.363 3.692c-.54.313-1.233-.066-1.233-.697V4.308c0-.63.692-1.01 1.233-.696l6.363 3.692a.802.802 0 0 1 0 1.393z"/>
+                                    </svg>
+                                    Kaydı Dinle
+                                </button>
+                            </div>
+                            <div class="col-md-6 col-12 d-grid">
+                                <button type="button" id="rerecordBtn" class="btn btn-pi btn-pi-secondary shadow-sm" disabled>
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" fill="currentColor" class="bi bi-arrow-counterclockwise" viewBox="0 0 16 16">
+                                        <path fill-rule="evenodd" d="M8 3a5 5 0 1 1-4.546 2.914.5.5 0 0 0-.908-.417A6 6 0 1 0 8 2v1z"/>
+                                        <path d="M8 4.466V.534a.25.25 0 0 0-.41-.192L5.23 2.308a.25.25 0 0 0 0 .384l2.36 1.966A.25.25 0 0 0 8 4.466z"/>
+                                    </svg>
+                                    Tekrar Kaydet
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Action Submit Footer -->
+                        <div class="row mt-5">
+                            <div class="col-12 d-grid">
+                                <button type="button" id="nextBtn" class="btn btn-pi btn-pi-primary btn-lg shadow" disabled>
+                                    {% if command_index == 5 %}
+                                        Testi Tamamla
+                                    {% else %}
+                                        Sonraki Komut
+                                    {% endif %}
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" class="bi bi-arrow-right-circle-fill ms-2" viewBox="0 0 16 16">
+                                        <path d="M8 0a8 8 0 1 1 0 16A8 8 0 0 1 8 0zM4.5 7.5a.5.5 0 0 0 0 1h5.793l-2.147 2.146a.5.5 0 0 0 .708.708l3-3a.5.5 0 0 0 0-.708l-3-3a.5.5 0 1 0-.708.708L10.293 7.5H4.5z"/>
+                                    </svg>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="py-3 text-center">
+        <div class="container">
+            <span>© 2026 Havelsan Suit ASR Değerlendirme Modülü</span>
+        </div>
+    </footer>
+
+    <!-- Bootstrap JS Bundle -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- Custom JS Recorder -->
+    <script src="{{ url_for('static', filename='js/asr_recorder.js') }}"></script>
+
+    <!-- Interactive recording logic -->
+    <script>
+        const recorder = new VoiceRecorder();
+        let recordedBlob = null;
+
+        const startBtn = document.getElementById('startBtn');
+        const stopBtn = document.getElementById('stopBtn');
+        const playBtn = document.getElementById('playBtn');
+        const rerecordBtn = document.getElementById('rerecordBtn');
+        const nextBtn = document.getElementById('nextBtn');
+        const audioPlayer = document.getElementById('audioPlayer');
+        const audioPlayerContainer = document.getElementById('audioPlayerContainer');
+        const recordingStatus = document.getElementById('recordingStatus');
+        const loadingOverlay = document.getElementById('loadingOverlay');
+
+        // Start Recording
+        startBtn.addEventListener('click', async () => {
+            try {
+                await recorder.start();
+                
+                // Update Button States
+                startBtn.disabled = true;
+                stopBtn.disabled = false;
+                playBtn.disabled = true;
+                rerecordBtn.disabled = true;
+                nextBtn.disabled = true;
+
+                // Update Status text
+                recordingStatus.innerHTML = '<span class="recording-indicator"></span><span class="text-danger fw-bold">Kaydediliyor...</span>';
+                audioPlayerContainer.classList.add('d-none');
+            } catch (err) {
+                alert("Mikrofona erişilemedi. Lütfen izin verdiğinizden emin olun.");
+            }
+        });
+
+        // Stop Recording
+        stopBtn.addEventListener('click', () => {
+            recorder.stop();
+            
+            // Wait for recording-stopped event
+            stopBtn.disabled = true;
+        });
+
+        // Listen for stop event from recorder.js
+        window.addEventListener('recording-stopped', (event) => {
+            const { url, blob } = event.detail;
+            recordedBlob = blob;
+            audioPlayer.src = url;
+
+            // Update Status text
+            recordingStatus.innerHTML = '<span class="badge bg-success">Kayıt Başarıyla Alındı</span>';
+            
+            // Update Button States
+            playBtn.disabled = false;
+            rerecordBtn.disabled = false;
+            nextBtn.disabled = false;
+        });
+
+        // Play recorded voice
+        playBtn.addEventListener('click', () => {
+            audioPlayerContainer.classList.remove('d-none');
+            audioPlayer.play();
+        });
+
+        // Re-record
+        rerecordBtn.addEventListener('click', () => {
+            recordedBlob = null;
+            audioPlayer.src = '';
+            audioPlayerContainer.classList.add('d-none');
+
+            // Reset States
+            startBtn.disabled = false;
+            stopBtn.disabled = true;
+            playBtn.disabled = true;
+            rerecordBtn.disabled = true;
+            nextBtn.disabled = true;
+
+            recordingStatus.innerHTML = '<span class="badge bg-secondary">Kayıt Bekleniyor</span>';
+        });
+
+        // Submit Audio and proceed
+        nextBtn.addEventListener('click', async () => {
+            if (!recordedBlob) return;
+
+            // Show loading spinner
+            loadingOverlay.classList.remove('d-none');
+
+            const formData = new FormData();
+            formData.append('audio', recordedBlob, 'recording.wav');
+            formData.append('command_index', '{{ command_index }}');
+
+            try {
+                const response = await fetch("{{ url_for('upload_audio') }}", {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    if (data.next_index > 5) {
+                        // Redirect to Results Screen
+                        window.location.href = "{{ url_for('result') }}";
+                    } else {
+                        // Reload for the next command
+                        window.location.reload();
+                    }
+                } else {
+                    loadingOverlay.classList.add('d-none');
+                    alert("Yükleme sırasında hata oluştu: " + data.error);
+                }
+            } catch (err) {
+                loadingOverlay.classList.add('d-none');
+                alert("Sunucuyla bağlantı kurulamadı: " + err.message);
+            }
+        });
+    </script>
+</body>
+</html>

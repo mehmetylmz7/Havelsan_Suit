@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Toplu ASR Sonuçları</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/asr.css') }}">
+</head>
+<body>
+    <header class="py-3 mb-4">
+        <div class="container d-flex justify-content-between align-items-center">
+            <h1 class="h3 mb-0 fw-bold">ASR Kullanıcı Testi</h1>
+            <span class="badge bg-light text-dark fs-6">Katılımcı: {{ participant_id }}</span>
+        </div>
+    </header>
+
+    <main class="container my-auto py-4">
+        <div class="row justify-content-center">
+            <div class="col-lg-11 col-md-12">
+                <div class="card card-academic p-4 p-md-5">
+                    <div class="card-body">
+                        <div class="text-center mb-4">
+                            <div class="text-success mb-3">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="72" height="72" fill="currentColor" class="bi bi-check-circle-fill" viewBox="0 0 16 16">
+                                    <path d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zm-3.97-3.03a.75.75 0 0 0-1.08.022L7.477 9.417 5.384 7.323a.75.75 0 0 0-1.06 1.06L6.97 11.03a.75.75 0 0 0 1.079-.02l3.992-4.99a.75.75 0 0 0-.01-1.05z"/>
+                                </svg>
+                            </div>
+                            <h2 class="fw-bold mb-2">Toplu ASR Analizi Tamamlandı</h2>
+                            <p class="text-secondary fs-5 mb-2">
+                                5 komut kaydı tamamlandıktan sonra seçili model ile toplu tahmin yapılmıştır.
+                            </p>
+                            <div class="alert alert-secondary d-inline-block mt-3 mb-0">
+                                Kullanılan model: <strong>{{ selected_model_name }}</strong>
+                            </div>
+                        </div>
+
+                        {% if error %}
+                            <div class="alert alert-danger text-center">{{ error }}</div>
+                        {% else %}
+                            <div class="table-responsive my-5">
+                                <table class="table table-bordered table-striped align-middle fs-6">
+                                    <thead class="table-dark">
+                                        <tr>
+                                            <th style="width: 6%;">#</th>
+                                            <th style="width: 37%;">Komut</th>
+                                            <th style="width: 37%;">Model Tahmini</th>
+                                            <th style="width: 10%;" class="text-center">WER</th>
+                                            <th style="width: 10%;" class="text-center">E/S/D</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for res in results %}
+                                            <tr>
+                                                <td class="fw-bold">{{ res.command_index }}</td>
+                                                <td><code>{{ res.reference_text }}</code></td>
+                                                <td><code>{{ res.prediction_text }}</code></td>
+                                                <td class="text-center fw-bold {% if res.wer == 0 %}text-success{% else %}text-danger{% endif %}">
+                                                    {{ (res.wer * 100) | round(1) }}%
+                                                </td>
+                                                <td class="text-center text-secondary">
+                                                    {{ res.insertion_count }} / {{ res.deletion_count }} / {{ res.substitution_count }}
+                                                </td>
+                                            </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        {% endif %}
+
+                        <div class="d-flex flex-column flex-md-row justify-content-center gap-3">
+                            <a href="{{ url_for('participant_start') }}" class="btn btn-pi btn-pi-primary shadow-sm px-5">
+                                Yeni Katılımcı Girişi
+                            </a>
+                            <a href="{{ url_for('admin_dashboard') }}" class="btn btn-pi btn-pi-secondary shadow-sm">
+                                Admin Paneline Git
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <footer class="py-3 text-center">
+        <div class="container">
+            <span>© 2026 Havelsan Suit ASR Değerlendirme Modülü</span>
+        </div>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

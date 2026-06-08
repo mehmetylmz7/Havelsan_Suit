@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Yönetici Paneli - ASR Kullanıcı Testi</title>
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Custom Style -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/asr.css') }}">
+</head>
+<body>
+
+    <!-- Header -->
+    <header class="py-3 mb-4">
+        <div class="container d-flex flex-column flex-md-row justify-content-between align-items-center">
+            <h1 class="h3 mb-0 fw-bold">ASR Kullanıcı Testi Yönetici Paneli</h1>
+            <div class="mt-2 mt-md-0 d-flex gap-2">
+                <a href="{{ url_for('participant_start') }}" class="btn btn-sm btn-outline-light">Test Arayüzü</a>
+                {% if not show_login %}
+                    <a href="{{ url_for('admin_logout') }}" class="btn btn-sm btn-danger">Çıkış Yap</a>
+                {% endif %}
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="container py-4">
+        {% if show_login %}
+            <!-- Login Form -->
+            <div class="row justify-content-center py-5">
+                <div class="col-md-6 col-lg-4">
+                    <div class="card card-academic p-4 shadow-sm">
+                        <div class="card-header-academic pb-3 mb-4 text-center fs-5">
+                            Yönetici Girişi
+                        </div>
+                        <div class="card-body">
+                            {% if error %}
+                                <div class="alert alert-danger" role="alert">
+                                    {{ error }}
+                                </div>
+                            {% endif %}
+                            <form action="{{ url_for('admin_dashboard') }}" method="POST">
+                                <div class="mb-4">
+                                    <label for="password" class="form-label form-label-lg">Yönetici Şifresi</label>
+                                    <input type="password" class="form-control form-control-lg text-center" name="password" id="password" placeholder="••••••••" required autofocus>
+                                </div>
+                                <div class="d-grid mt-4">
+                                    <button type="submit" class="btn btn-pi btn-pi-primary btn-lg">
+                                        Giriş Yap
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="currentColor" class="bi bi-box-arrow-in-right ms-2" viewBox="0 0 16 16">
+                                            <path fill-rule="evenodd" d="M6 3.5a.5.5 0 0 1 .5-.5h8a.5.5 0 0 1 .5.5v9a.5.5 0 0 1-.5.5h-8a.5.5 0 0 1-.5-.5v-2a.5.5 0 0 0-1 0v2A1.5 1.5 0 0 0 6.5 14h8a1.5 1.5 0 0 0 1.5-1.5v-9A1.5 1.5 0 0 0 14.5 2h-8A1.5 1.5 0 0 0 5 3.5v2a.5.5 0 0 0 1 0v-2z"/>
+                                            <path fill-rule="evenodd" d="M11.854 8.354a.5.5 0 0 0 0-.708l-3-3a.5.5 0 1 0-.708.708L10.293 7.5H1.5a.5.5 0 0 0 0 1h8.793l-2.147 2.146a.5.5 0 0 0 .708.708l3-3z"/>
+                                        </svg>
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        {% else %}
+            <!-- Summary Stats Cards -->
+            <div class="row g-4 mb-4">
+                <div class="col-md-4">
+                    <div class="card card-academic p-3 text-center border-start border-4 border-primary shadow-sm">
+                        <div class="text-secondary uppercase small fw-bold">Toplam Katılımcı</div>
+                        <div class="display-5 fw-bold text-dark my-2">{{ total_participants }}</div>
+                        <div class="text-muted small">Kayıtlı tekil kullanıcı sayısı</div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card card-academic p-3 text-center border-start border-4 border-success shadow-sm">
+                        <div class="text-secondary uppercase small fw-bold">Toplam Ses Kaydı</div>
+                        <div class="display-5 fw-bold text-dark my-2">{{ total_recordings }}</div>
+                        <div class="text-muted small">Veritabanındaki WAV dosyaları</div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card card-academic p-3 text-center border-start border-4 border-warning shadow-sm">
+                        <div class="text-secondary uppercase small fw-bold">Ortalama WER (Hata Oranı)</div>
+                        <div class="display-5 fw-bold text-dark my-2">{{ avg_wer }}%</div>
+                        <div class="text-muted small">Karakter/Kelime hata oranı ortalaması</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Downloads Section -->
+            <div class="card card-academic mb-4 shadow-sm">
+                <div class="card-header-academic p-3 fs-5">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" class="bi bi-download me-2" viewBox="0 0 16 16">
+                        <path d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5z"/>
+                        <path d="M7.646 11.854a.5.5 0 0 0 .708 0l3-3a.5.5 0 0 0-.708-.708L8.5 10.293V1.5a.5.5 0 0 0-1 0v8.793L5.354 8.146a.5.5 0 1 0-.708.708l3 3z"/>
+                    </svg>
+                    Veri Dışa Aktarma (CSV)
+                </div>
+                <div class="card-body">
+                    <div class="row g-3">
+                        <div class="col-md-4 d-grid">
+                            <a href="{{ url_for('export_csv', table_name='participants') }}" class="btn btn-pi btn-pi-secondary">
+                                Participants (Katılımcılar) İndir
+                            </a>
+                        </div>
+                        <div class="col-md-4 d-grid">
+                            <a href="{{ url_for('export_csv', table_name='recordings') }}" class="btn btn-pi btn-pi-secondary">
+                                Recordings (Ses Kayıtları) İndir
+                            </a>
+                        </div>
+                        <div class="col-md-4 d-grid">
+                            <a href="{{ url_for('export_csv', table_name='wer_results') }}" class="btn btn-pi btn-pi-secondary">
+                                WER Results (Analiz) İndir
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Participant Results Section -->
+            <div class="card card-academic mb-4 shadow-sm">
+                <div class="card-header-academic p-3 fs-5">
+                    Katılımcı Sonuçları
+                </div>
+                <div class="card-body">
+                    <div class="row g-4">
+                        <div class="col-lg-4 col-12">
+                            <h6 class="fw-bold mb-3 border-bottom pb-2">Katılımcılar</h6>
+                            <div class="list-group" style="max-height: 420px; overflow-y: auto;">
+                                {% if participants %}
+                                    {% for participant in participants %}
+                                        <a href="{{ url_for('admin_dashboard', participant_id=participant.participant_id) }}"
+                                           class="list-group-item list-group-item-action {% if selected_participant_id == participant.participant_id %}active{% endif %}">
+                                            <div class="d-flex justify-content-between align-items-center">
+                                                <strong>{{ participant.participant_id }}</strong>
+                                                <span class="badge {% if selected_participant_id == participant.participant_id %}bg-light text-dark{% else %}bg-secondary{% endif %}">
+                                                    {{ participant.result_count }}/{{ participant.recording_count }}
+                                                </span>
+                                            </div>
+                                            <div class="small {% if selected_participant_id == participant.participant_id %}text-white-50{% else %}text-muted{% endif %}">
+                                                {{ participant.gender }} · {{ participant.english_level }} ·
+                                                {% if participant.avg_wer is not none %}
+                                                    Ortalama WER: {{ (participant.avg_wer * 100) | round(1) }}%
+                                                {% else %}
+                                                    Sonuç yok
+                                                {% endif %}
+                                            </div>
+                                        </a>
+                                    {% endfor %}
+                                {% else %}
+                                    <div class="text-muted text-center py-4">Henüz katılımcı yok.</div>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <div class="col-lg-8 col-12">
+                            {% if selected_participant %}
+                                <div class="d-flex flex-column flex-md-row justify-content-between gap-2 mb-3">
+                                    <div>
+                                        <h6 class="fw-bold mb-1">{{ selected_participant.participant_id }} Detayları</h6>
+                                        <div class="text-muted small">
+                                            Yaş: {{ selected_participant.age }} ·
+                                            Cinsiyet: {{ selected_participant.gender }} ·
+                                            Eğitim: {{ selected_participant.education }} ·
+                                            İngilizce: {{ selected_participant.english_level }}
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="table-responsive">
+                                    <table class="table table-bordered table-striped align-middle fs-6 mb-0">
+                                        <thead class="table-dark">
+                                            <tr>
+                                                <th style="width: 6%;">#</th>
+                                                <th style="width: 38%;">Komut</th>
+                                                <th style="width: 38%;">Model Tahmini</th>
+                                                <th style="width: 10%;" class="text-center">WER</th>
+                                                <th style="width: 8%;" class="text-center">E/S/D</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {% if participant_results %}
+                                                {% for res in participant_results %}
+                                                    <tr>
+                                                        <td class="fw-bold">{{ res.command_index }}</td>
+                                                        <td><code>{{ res.reference_text }}</code></td>
+                                                        <td>
+                                                            {% if res.prediction_text %}
+                                                                <code>{{ res.prediction_text }}</code>
+                                                            {% else %}
+                                                                <span class="text-muted">Henüz prediction yok</span>
+                                                            {% endif %}
+                                                        </td>
+                                                        <td class="text-center fw-bold {% if res.wer is not none and res.wer == 0 %}text-success{% elif res.wer is not none %}text-danger{% else %}text-muted{% endif %}">
+                                                            {% if res.wer is not none %}
+                                                                {{ (res.wer * 100) | round(1) }}%
+                                                            {% else %}
+                                                                -
+                                                            {% endif %}
+                                                        </td>
+                                                        <td class="text-center text-secondary">
+                                                            {% if res.insertion_count is not none %}
+                                                                {{ res.insertion_count }} / {{ res.deletion_count }} / {{ res.substitution_count }}
+                                                            {% else %}
+                                                                -
+                                                            {% endif %}
+                                                        </td>
+                                                    </tr>
+                                                {% endfor %}
+                                            {% else %}
+                                                <tr>
+                                                    <td colspan="5" class="text-center text-muted py-4">Bu katılımcı için kayıt bulunamadı.</td>
+                                                </tr>
+                                            {% endif %}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            {% else %}
+                                <div class="h-100 d-flex align-items-center justify-content-center text-muted border rounded p-5 bg-light">
+                                    Sonuçları görmek için soldan bir katılımcı seçin.
+                                </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Detailed Metrics Tables -->
+            <div class="row g-4 mb-4">
+                
+                <!-- Most Failed Commands -->
+                <div class="col-lg-7 col-12">
+                    <div class="card card-academic h-100 shadow-sm">
+                        <div class="card-header-academic p-3 fs-5">
+                            Komut Bazlı Ortalama WER Oranları
+                        </div>
+                        <div class="card-body p-0">
+                            <div class="table-responsive" style="max-height: 400px; overflow-y: auto;">
+                                <table class="table table-striped table-hover align-middle mb-0">
+                                    <thead class="table-dark sticky-top">
+                                        <tr>
+                                            <th>Komut</th>
+                                            <th class="text-center" style="width: 15%;">Kayıt Sayısı</th>
+                                            <th class="text-center" style="width: 20%;">Ortalama WER</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% if cmd_wers %}
+                                            {% for cmd in cmd_wers %}
+                                                <tr>
+                                                    <td><code>{{ cmd.reference_text }}</code></td>
+                                                    <td class="text-center">{{ cmd.count }}</td>
+                                                    <td class="text-center fw-bold {% if cmd.avg_wer < 0.2 %}text-success{% else %}text-danger{% endif %}">
+                                                        {{ (cmd.avg_wer * 100) | round(1) }}%
+                                                    </td>
+                                                </tr>
+                                            {% endfor %}
+                                        {% else %}
+                                            <tr>
+                                                <td colspan="3" class="text-center text-muted py-4">Henüz kayıt yapılmamış.</td>
+                                            </tr>
+                                        {% endif %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Demographics Distributions -->
+                <div class="col-lg-5 col-12">
+                    <div class="card card-academic h-100 shadow-sm">
+                        <div class="card-header-academic p-3 fs-5">
+                            Katılımcı Dağılımları
+                        </div>
+                        <div class="card-body">
+                            
+                            <!-- Gender distribution -->
+                            <h6 class="fw-bold mb-3 border-bottom pb-1">Cinsiyet Dağılımı</h6>
+                            {% if gender_dist %}
+                                {% for item in gender_dist %}
+                                    <div class="mb-3">
+                                        <div class="d-flex justify-content-between text-secondary mb-1">
+                                            <span>{{ item.gender }}</span>
+                                            <span>{{ item.count }} kişi</span>
+                                        </div>
+                                        <div class="progress" style="height: 10px;">
+                                            {% set percent = (item.count / total_participants * 100) if total_participants > 0 else 0 %}
+                                            <div class="progress-bar progress-bar-primary" role="progressbar" style="width: {{ percent }}%;" aria-valuenow="{{ percent }}" aria-valuemin="0" aria-valuemax="100"></div>
+                                        </div>
+                                    </div>
+                                {% endfor %}
+                            {% else %}
+                                <p class="text-muted small text-center my-3">Cinsiyet verisi bulunamadı.</p>
+                            {% endif %}
+
+                            <!-- English level distribution -->
+                            <h6 class="fw-bold mt-4 mb-3 border-bottom pb-1">İngilizce Seviyesi Dağılımı</h6>
+                            {% if eng_dist %}
+                                {% for item in eng_dist %}
+                                    <div class="mb-3">
+                                        <div class="d-flex justify-content-between text-secondary mb-1">
+                                            <span>{{ item.english_level }}</span>
+                                            <span>{{ item.count }} kişi</span>
+                                        </div>
+                                        <div class="progress" style="height: 10px;">
+                                            {% set percent = (item.count / total_participants * 100) if total_participants > 0 else 0 %}
+                                            <div class="progress-bar progress-bar-primary" role="progressbar" style="width: {{ percent }}%;" aria-valuenow="{{ percent }}" aria-valuemin="0" aria-valuemax="100"></div>
+                                        </div>
+                                    </div>
+                                {% endfor %}
+                            {% else %}
+                                <p class="text-muted small text-center my-3">İngilizce seviyesi verisi bulunamadı.</p>
+                            {% endif %}
+
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        {% endif %}
+    </main>
+
+    <!-- Footer -->
+    <footer class="py-3 text-center">
+        <div class="container">
+            <span>© 2026 Havelsan Suit ASR Değerlendirme Modülü | Yönetici Paneli</span>
+        </div>
+    </footer>
+
+    <!-- Bootstrap JS Bundle -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

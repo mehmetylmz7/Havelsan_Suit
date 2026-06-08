@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gönüllü Onam Formu - ASR Kullanıcı Testi</title>
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Custom Style -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/asr.css') }}">
+</head>
+<body>
+
+    <!-- Header -->
+    <header class="py-3 mb-4">
+        <div class="container d-flex justify-content-between align-items-center">
+            <h1 class="h3 mb-0 fw-bold">ASR Kullanıcı Testi</h1>
+            <span class="badge bg-light text-dark fs-6">Aşama 1: Gönüllü Onam</span>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="container my-auto py-4">
+        <div class="row justify-content-center">
+            <div class="col-lg-8 col-md-10">
+                <div class="card card-academic p-4 p-md-5">
+                    <div class="card-header-academic pb-3 mb-4 fs-4">
+                        Gönüllü Katılım ve Onam Formu
+                    </div>
+                    
+                    <div class="card-body">
+                        <div class="mb-4 text-secondary lh-lg" style="max-height: 250px; overflow-y: auto; padding: 10px; border: 1px solid var(--border-color); border-radius: 4px; background-color: #f8fafc;">
+                            <h5 class="text-dark">1. Çalışmanın Amacı</h5>
+                            <p>Bu araştırma çalışması, Türkçe ve İngilizce dillerinin birlikte kullanıldığı (code-switching) askeri/teknik komut yapılarının otomatik ses tanıma (ASR) modelleri tarafından doğru bir şekilde deşifre edilip edilemediğini analiz etmek amacıyla gerçekleştirilmektedir.</p>
+                            
+                            <h5 class="text-dark">2. Veri Toplama ve Gizlilik</h5>
+                            <p>Çalışma kapsamında vereceğiniz ses kayıtları ve demografik bilgileriniz (yaş, cinsiyet, eğitim, İngilizce seviyesi) tamamen anonim olarak kaydedilecek ve üçüncü şahıslarla kimlik belirleyici bir bilgi olmadan akademik/araştırma amaçlarıyla paylaşılacaktır. Kaydedilen ses verileri üzerinden herhangi bir biyometrik kimlik tespiti yapılmayacaktır.</p>
+                            
+                            <h5 class="text-dark">3. Gönüllülük Esası</h5>
+                            <p>Bu teste katılmak tamamen gönüllülük esasına dayanmaktadır. İstediğiniz aşamada testi yarıda bırakabilir veya verilerinizin silinmesini talep edebilirsiniz. Çalışmaya katılımınız nedeniyle herhangi bir risk veya olumsuz bir durumla karşılaşmayacaksınız.</p>
+                        </div>
+
+                        <form action="{{ url_for('consent') }}" method="POST" id="consentForm">
+                            <div class="form-check my-4 p-3 border rounded bg-light">
+                                <input class="form-check-input ms-0 me-3" type="checkbox" name="consent_agreed" id="consentCheck" style="transform: scale(1.3);">
+                                <label class="form-check-label fw-bold text-dark" for="consentCheck">
+                                    Ses kayıtlarımın anonim olarak araştırma amacıyla kullanılmasını ve bu çalışmaya gönüllü olarak katılmayı kabul ediyorum.
+                                </label>
+                            </div>
+
+                            <div class="row mt-5">
+                                <div class="col-6 d-grid">
+                                    <a href="{{ url_for('participant_start') }}" class="btn btn-pi btn-pi-secondary btn-lg">Geri Dön</a>
+                                </div>
+                                <div class="col-6 d-grid">
+                                    <button type="submit" id="submitBtn" class="btn btn-pi btn-pi-primary btn-lg" disabled>
+                                        Devam Et
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="currentColor" class="bi bi-chevron-right ms-2" viewBox="0 0 16 16">
+                                            <path fill-rule="evenodd" d="M4.646 1.646a.5.5 0 0 1 .708 0l6 6a.5.5 0 0 1 0 .708l-6 6a.5.5 0 0 1-.708-.708L10.293 8 4.646 2.354a.5.5 0 0 1 0-.708z"/>
+                                        </svg>
+                                    </button>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="py-3 text-center">
+        <div class="container">
+            <span>© 2026 Havelsan Suit ASR Değerlendirme Modülü</span>
+        </div>
+    </footer>
+
+    <!-- Bootstrap JS Bundle -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+    <!-- Checkbox Listener JS -->
+    <script>
+        const checkbox = document.getElementById('consentCheck');
+        const submitBtn = document.getElementById('submitBtn');
+
+        checkbox.addEventListener('change', function() {
+            submitBtn.disabled = !this.checked;
+        });
+    </script>
+</body>
+</html>

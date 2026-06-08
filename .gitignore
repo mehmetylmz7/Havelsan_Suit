@@ -1,34 +1,72 @@
-# ── Python ────────────────────────────────────────────────
+# Python bytecode / caches
 __pycache__/
-*.pyc
-*.pyo
+*.py[cod]
+*$py.class
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.cache/
 
-# ── Ortam / Bağımlılıklar ─────────────────────────────────
+# Virtual environments / local env
 venv/
+.venv/
+env/
+ENV/
 .env
+.env.*
+!.env.example
 
-# ── Veri ─────────────────────────────────────────────────
+# Logs / runtime files
+*.log
+*.pid
+*.tmp
+*.swp
+
+# Local web app runtime data
+web_app/database.db
+web_app/*.db
+web_app/recordings/
+web_app/exports/
+web_app/__pycache__/
+
+# Audio outputs / generated datasets
 outputs/
 wavs/
 converted_audio/
+*.wav
+*.mp3
+*.flac
+*.ogg
+*.m4a
+
+# Project data artifacts
 data/raw/
 data/preprocessed/
 data/augmented/
+data/augmented_dataset/
 data/dataset/
-data/*/
+data/dataset_*/
+data/full_augmented_dataset/
 
-# ── Modeller ─────────────────────────────────────────────
+# Model weights and training artifacts
 models/
 web_app/models/
-
-# ── Eğitim ───────────────────────────────────────────────
 training/checkpoints/
 training/__pycache__/
+*.safetensors
+*.bin
+*.pt
+*.pth
+*.ckpt
+*.onnx
 
-# ── Web uygulaması ────────────────────────────────────────
-web_app/__pycache__/
+# Experiment tracking
+wandb/
+runs/
+lightning_logs/
 
-# ── IDE / OS ──────────────────────────────────────────────
+# IDE / OS
 .DS_Store
+Thumbs.db
 .vscode/
 .idea/

@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Havelsan Suit ASR</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Havelsan Suit ASR</h1>
+            <p class="subtitle">Birleşik konuşma tanıma arayüzü</p>
+        </header>
+
+        <div class="main-content home-menu">
+            <a class="card home-option" href="{{ url_for('demo') }}">
+                <h2>1. Deneme Arayüzü</h2>
+                <p>Ses kaydı veya dosya yükleme ile seçili modeli hızlıca test et.</p>
+            </a>
+
+            <a class="card home-option" href="{{ url_for('participant_start') }}">
+                <h2>2. Katılımcı Test Arayüzü</h2>
+                <p>Model seç, katılımcı bilgilerini al ve 5 komutluk WER testini başlat.</p>
+            </a>
+
+            <a class="card home-option" href="{{ url_for('admin_dashboard') }}">
+                <h2>3. Admin Paneli</h2>
+                <p>Katılımcı, kayıt ve WER sonuçlarını görüntüle veya CSV olarak indir.</p>
+            </a>
+        </div>
+
+        <footer>
+            <p>Havelsan Suit - Whisper ASR © 2026</p>
+        </footer>
+    </div>
+</body>
+</html>

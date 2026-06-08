@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Katılımcı Testi - Model Seçimi</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/asr.css') }}">
+</head>
+<body>
+    <header class="py-3 mb-4">
+        <div class="container d-flex flex-column flex-md-row justify-content-between align-items-center">
+            <h1 class="h3 mb-0 fw-bold">ASR Katılımcı Testi</h1>
+            <a href="{{ url_for('index') }}" class="btn btn-sm btn-outline-light mt-2 mt-md-0">Ana Menü</a>
+        </div>
+    </header>
+
+    <main class="container my-auto py-4">
+        <div class="row justify-content-center">
+            <div class="col-lg-8 col-md-10">
+                <div class="card card-academic p-4 p-md-5">
+                    <div class="card-header-academic pb-3 mb-4 text-center fs-4">
+                        Katılımcı Testi İçin Model Seçimi
+                    </div>
+
+                    <div class="card-body fs-5 text-secondary">
+                        <p class="mb-4">
+                            Bu akışta katılımcıya 5 komut okutulur, ses kayıtları kaydedilir ve seçtiğiniz lokal Whisper modeliyle WER hesaplanır.
+                        </p>
+
+                        {% if error %}
+                            <div class="alert alert-danger">{{ error }}</div>
+                        {% endif %}
+
+                        {% if models %}
+                            <form method="POST" action="{{ url_for('participant_start') }}">
+                                <div class="mb-4">
+                                    <label for="model_id" class="form-label form-label-lg">Kullanılacak Model</label>
+                                    <select class="form-select form-select-lg" name="model_id" id="model_id" required>
+                                        <option value="" selected disabled>Model seçiniz</option>
+                                        {% for model in models %}
+                                            <option value="{{ model.id }}">{{ model.name }} ({{ model.size }})</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+
+                                <div class="alert alert-info fs-6">
+                                    Seçilen model test boyunca sabit kalır. Mock tahmin kullanılmaz; sonuçlar gerçek model çıktısından hesaplanır.
+                                </div>
+
+                                <div class="row mt-5">
+                                    <div class="col-6 d-grid">
+                                        <a href="{{ url_for('index') }}" class="btn btn-pi btn-pi-secondary btn-lg">Geri Dön</a>
+                                    </div>
+                                    <div class="col-6 d-grid">
+                                        <button type="submit" class="btn btn-pi btn-pi-primary btn-lg">Teste Başla</button>
+                                    </div>
+                                </div>
+                            </form>
+                        {% else %}
+                            <div class="alert alert-warning">
+                                `models/` klasöründe doğrudan yüklenebilir lokal model bulunamadı. `config.json` ve model ağırlığı içeren bir model klasörü ekleyin.
+                            </div>
+                            <div class="d-grid col-md-6 mx-auto mt-4">
+                                <a href="{{ url_for('index') }}" class="btn btn-pi btn-pi-secondary btn-lg">Ana Menüye Dön</a>
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <footer class="py-3 text-center">
+        <div class="container">
+            <span>© 2026 Havelsan Suit ASR Değerlendirme Modülü</span>
+        </div>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
